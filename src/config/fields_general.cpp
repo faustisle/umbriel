@@ -340,6 +340,7 @@ namespace umbriel {
           registry::text("xwayland_primary_output", &G::xwaylandPrimaryOutput),
           boolean("nvidia_sync_workaround", &G::nvidiaSyncWorkaround),
           boolean("show_cheatsheet", &G::showCheatsheet),
+          boolean("force_tearing", &G::forceTearing),
           boolean("focus_on_activate", &G::focusOnActivate),
           boolean("attach_modal_dialogs", &G::attachModalDialogs),
           boolean("honor_restored_maximize", &G::honorRestoredMaximize),

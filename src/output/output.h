@@ -127,6 +127,8 @@ namespace umbriel {
     const std::string& bitDepthFallbackReason() const { return m_bitDepthFallbackReason; }
     bool configuredDirectScanoutEnabled() const;
     bool configuredTearingAllowed() const;
+    // `[general] force_tearing`: request async presentation for every composited frame, bypassing window eligibility.
+    bool globalTearingForced() const;
     // Whether a workspace step wraps around the ends of this output's inventory.
     bool configuredCyclicWorkspaces() const;
     bool tearingRequested() const;

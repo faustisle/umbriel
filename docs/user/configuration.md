@@ -90,6 +90,7 @@ xwayland_xsettings = true
 xwayland_primary_output = ""
 nvidia_sync_workaround = true
 show_cheatsheet = true
+force_tearing = false
 focus_on_activate = false
 attach_modal_dialogs = true
 honor_restored_maximize = false
@@ -105,6 +106,7 @@ honor_restored_maximize = false
 | `xwayland_primary_output`    | string       | `""`                      | Connector or monitor identity to publish as the X11 primary monitor. Applies on reload. Empty leaves primary selection unmanaged.                                                    |
 | `nvidia_sync_workaround`     | bool         | `true`                    | Wait for GPU completion on composed NVIDIA outputs without explicit synchronization. Applies on reload. See [NVIDIA synchronization](#nvidia-synchronization).                       |
 | `show_cheatsheet`            | bool         | `true`                    | Show the keybind cheatsheet when Umbriel starts.                                                                                                                                     |
+| `force_tearing`              | bool         | `false`                   | Request asynchronous presentation for every composited output frame, not only eligible fullscreen windows. See [Global tearing](#global-tearing).                                    |
 | `focus_on_activate`          | bool         | `false`                   | Let application activation requests focus and reveal their target.                                                                                                                   |
 | `attach_modal_dialogs`       | bool         | `true`                    | Attach a modal dialog to its parent, so it follows the parent and holds its input. See [Dialogs](layout.md#dialogs).                                                                 |
 | `honor_restored_maximize`    | bool         | `false`                   | Honor maximize requests an application makes while its window opens, until it acknowledges its opening layout.                                                                       |
@@ -137,6 +139,21 @@ Output coordinates can be negative. Xwayland receives the layout translated to n
 With `nvidia_sync_workaround = true`, Umbriel waits for GPU rendering to finish before presenting a composed output frame when the renderer uses the NVIDIA driver and the output has no explicit synchronization timeline. This can reduce flicker caused by unreliable implicit synchronization. Outputs with explicit synchronization continue to use GPU fences without this extra wait.
 
 Waiting can cause stuttering or frame drops, especially when rendering takes longer than a refresh interval. Set `nvidia_sync_workaround = false` to disable the workaround if it causes those symptoms; synchronization-related flicker may return. Changes apply to subsequent composed frames on reload and survive renderer recovery. Capture synchronization is independent of this setting.
+
+### Global tearing
+
+`force_tearing = true` makes every composited output frame a candidate for asynchronous presentation, not just a fullscreen window that requests it. It bypasses the per-output `tearing` opt-in, the fullscreen requirement, client tearing-control hints, window-rule overrides, and the overlay and animation vetoes:
+
+```toml
+[general]
+force_tearing = true
+```
+
+This is an override of Umbriel's normal eligibility policy, so a window or output that sets `tearing = false` does not prevent it. Session lock, output capture, and recovery from a failed asynchronous commit still use synchronized presentation. The setting applies on reload to every connected output independently.
+
+Asynchronous presentation and hardware cursor updates are separate planes. With the default `hardware_cursor = true`, the pointer is updated by the cursor plane and may not tear with the desktop. Set `[input.cursor] hardware_cursor = false` to composite the cursor into the output frame so it follows the same asynchronous presentation path.
+
+Run `umbriel tearing` to inspect per-output eligibility and fallback reasons. A `global force` marker shows when the override is active.
 
 ## DRM devices
 

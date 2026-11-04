@@ -597,9 +597,10 @@ namespace umbriel {
             : presentationVsync.is_boolean() ? (presentationVsync.get<bool>() ? "vsync" : "async")
                                              : "unknown";
         std::println(
-            "output {}: allowed {}, requested {}, last commit {}, last presentation {}", output.value("name", ""),
+            "output {}: allowed {}, requested {}, last commit {}, last presentation {}{}", output.value("name", ""),
             output.value("allowed", false) ? "yes" : "no", output.value("requested", false) ? "yes" : "no",
-            output.value("last_commit_tearing", false) ? "async" : "regular", presentation
+            output.value("last_commit_tearing", false) ? "async" : "regular", presentation,
+            output.value("forced", false) ? " (global force)" : ""
         );
         if (const std::string fallback = output.value("fallback_reason", ""); !fallback.empty()) {
           std::println("  fallback: {}", fallback);
@@ -1092,6 +1093,7 @@ namespace umbriel {
       nlohmann::json entry = {
           {"name", output->wlr()->name},
           {"allowed", output->configuredTearingAllowed()},
+          {"forced", output->globalTearingForced()},
           {"requested", requested},
           {"last_commit_tearing", output->lastCommitTearing()},
           {"fallback_reason", requested ? output->tearingFallbackReason() : ""},

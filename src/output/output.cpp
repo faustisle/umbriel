@@ -478,6 +478,8 @@ namespace umbriel {
     return rule != nullptr && rule->allowTearing;
   }
 
+  bool Output::globalTearingForced() const { return config().general.forceTearing; }
+
   bool Output::configuredCyclicWorkspaces() const {
     const OutputRule* rule = findOutputRule(config(), identity());
     return rule != nullptr && rule->cyclicWorkspaces;
@@ -521,7 +523,7 @@ namespace umbriel {
     return tearingEnabled(configuredTearingAllowed(), view->resolvedRules().allowTearing, clientTearingHintAsync(view));
   }
 
-  bool Output::tearingRequested() const { return tearingEligible(tearingCandidate()); }
+  bool Output::tearingRequested() const { return globalTearingForced() || tearingEligible(tearingCandidate()); }
 
   std::optional<bool> Output::lastPresentationVsync() const {
     if (!m_lastPresentationFlags || *m_lastPresentationFlags == 0) {
@@ -1916,11 +1918,27 @@ namespace umbriel {
 
     const int externalLocks = externalRenderLocks();
     const bool captureActive = externalLocks > 0;
-    View* tearingView = tearingCandidate();
-    const bool tearingPolicyRequested = tearingEligible(tearingView);
+    const bool forceGlobalTearing = globalTearingForced();
+    // Global force mode deliberately skips the fullscreen candidate: ordinary
+    // desktop frames, panels, animations, and overlays all qualify. The
+    // operational vetoes below still apply.
+    View* tearingView = forceGlobalTearing ? nullptr : tearingCandidate();
 
-    bool tearingFrameEligible = tearingPolicyRequested;
-    if (!configuredTearingAllowed()) {
+    bool tearingFrameEligible = forceGlobalTearing || tearingEligible(tearingView);
+    if (forceGlobalTearing) {
+      if (m_server->sessionLocked()) {
+        tearingFrameEligible = false;
+        m_tearingFallbackReason = "session locked";
+      } else if (captureActive) {
+        tearingFrameEligible = false;
+        m_tearingFallbackReason = "output capture active";
+      } else if (m_tearingRecovery.regularCommitPending()) {
+        tearingFrameEligible = false;
+        m_tearingFallbackReason = "recovering from failed async commit";
+      } else {
+        m_tearingFallbackReason.clear();
+      }
+    } else if (!configuredTearingAllowed()) {
       m_tearingFallbackReason.clear();
     } else if (tearingView == nullptr) {
       m_tearingFallbackReason.clear();

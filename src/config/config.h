@@ -1084,6 +1084,11 @@ namespace umbriel {
       bool nvidiaSyncWorkaround = true;
       // Show the keybinds cheatsheet overlay on startup.
       bool showCheatsheet = true;
+      // Request asynchronous page flips for every composited output frame, not
+      // only for fullscreen windows that opt in. Overrides per-output and
+      // per-window tearing policy. Session lock, capture, and backend recovery
+      // still fall back to synchronized presentation.
+      bool forceTearing = false;
       // Honor activation requests by focusing and revealing the target window.
       bool focusOnActivate = false;
       // Hang a modal dialog on its parent's frame, so it follows the parent and holds its input.

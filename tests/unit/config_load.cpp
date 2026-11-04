@@ -2315,6 +2315,32 @@ UMBRIEL_TEST(nvidiaSyncWorkaroundReloadsAndDefaultsOn) {
   CHECK(!containsDiagnostic(store, "unknown key general.nvidia_sync_workaround"));
 }
 
+UMBRIEL_TEST(forceTearingReloadsAndDefaultsOff) {
+  const TempConfig file;
+  ConfigStore& store = umbriel::configStore();
+  store.setRootPath(file.path(), true);
+
+  file.write("[general]\n");
+  CHECK(store.reload().success);
+  CHECK(!store.config().general.forceTearing);
+
+  file.write("[general]\nforce_tearing = true\n");
+  const auto enabled = store.reload();
+  CHECK(enabled.success);
+  CHECK(enabled.change.general);
+  CHECK(store.config().general.forceTearing);
+
+  file.write("[general]\nforce_tearing = false\n");
+  CHECK(store.reload().success);
+  CHECK(!store.config().general.forceTearing);
+
+  file.write("[general]\nforce_tearing = \"true\"\n");
+  CHECK(store.reload().success);
+  CHECK(!store.config().general.forceTearing);
+  CHECK(containsDiagnostic(store, "ignoring general.force_tearing (expected boolean)"));
+  CHECK(!containsDiagnostic(store, "unknown key general.force_tearing"));
+}
+
 UMBRIEL_TEST(xwaylandPrimaryOutputLoadsAndCanBeRemoved) {
   const TempConfig file;
   ConfigStore& store = umbriel::configStore();

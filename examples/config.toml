@@ -38,6 +38,11 @@ files = []
 # nvidia_sync_workaround = false
 # Modal dialogs hang on their parent window and follow it. Turn this off to keep them ordinary windows.
 # attach_modal_dialogs = false
+# Request asynchronous presentation for the whole desktop, not just eligible
+# fullscreen windows. Session lock, capture, and failed-commit recovery still
+# use synchronized presentation. Set [input.cursor] hardware_cursor = false to
+# include the cursor in the torn frame.
+# force_tearing = true
 
 # ==============================================================================
 # Lid events

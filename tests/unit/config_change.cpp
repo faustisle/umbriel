@@ -770,6 +770,21 @@ UMBRIEL_TEST(outputScreenCastEffectEditRebindsEffects) {
   CHECK(!ConfigEffects::between(after, after).effects);
 }
 
+UMBRIEL_TEST(forceTearingReloadsTearingPolicyWithoutReapplyingOutputState) {
+  Config before;
+  Config forced = before;
+  forced.general.forceTearing = true;
+
+  const ConfigEffects effects = ConfigEffects::between(before, forced);
+  CHECK(effects.tearingPolicy);
+  CHECK(!effects.outputState);
+  CHECK(!effects.workspaceLayout);
+  CHECK(!effects.invalidatesOverview());
+  CHECK_EQ(effects.summary(), std::string("tearing policy"));
+
+  CHECK(!ConfigEffects::between(forced, forced).tearingPolicy);
+}
+
 UMBRIEL_TEST(tearingPolicyDoesNotReapplyOutputStateOrInvalidateOverview) {
   Config before;
   OutputRule output;

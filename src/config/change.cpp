@@ -207,7 +207,8 @@ namespace umbriel {
     // conservatively refresh every output projection.
     const bool outputNamesChanged = outputRuleNamesChanged(before, after);
     const bool outputState = outputNamesChanged || outputProjectionChanged(before, after, sameOutputState);
-    const bool tearingPolicy = outputNamesChanged
+    const bool tearingPolicy = before.general.forceTearing != after.general.forceTearing
+        || outputNamesChanged
         || outputProjectionChanged(before, after, sameOutputTearingPolicy)
         || !sameWindowTearingPolicy(before, after);
     const bool directScanoutPolicy =
