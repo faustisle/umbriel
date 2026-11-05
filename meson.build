@@ -124,6 +124,7 @@ nlohmann_json_dep = dependency('nlohmann_json')
 cairo_dep = dependency('cairo')
 pangocairo_dep = dependency('pangocairo')
 libdrm_dep = dependency('libdrm', version: '>=2.4.129')
+dl_dep = cpp.find_library('dl', required: false)
 libdisplay_info_dep = dependency('libdisplay-info', version: '>=0.3.0')
 libudev_dep = dependency('libudev', required: false)
 # sd-bus reads the systemd-localed keymap a keyboard without XKB config uses.
@@ -787,6 +788,7 @@ core_sources = files(
   'src/server/color_description.cpp',
   'src/server/backend_manager.cpp',
   'src/server/drm_lease.cpp',
+  'src/server/drm_async.cpp',
   'src/server/allocator.cpp',
   'src/server/server.cpp',
   'src/server/server_events.cpp',
@@ -921,9 +923,15 @@ umbriel_core_dep = declare_dependency(
 # every test links.
 umbriel = executable(
   'umbriel',
-  ['src/main.cpp', 'src/core/build_info.cpp', umbriel_git_revision_h],
+  [
+    'src/main.cpp',
+    'src/core/build_info.cpp',
+    'src/server/drm_async_hooks.cpp',
+    umbriel_git_revision_h,
+  ],
   cpp_args: jemalloc_cpp_args + ['-DUMBRIEL_VERSION="' + meson.project_version() + '"'],
-  dependencies: [umbriel_core_dep] + jemalloc_deps,
+  dependencies: [umbriel_core_dep] + (dl_dep.found() ? [dl_dep] : []) + jemalloc_deps,
+  link_args: ['-Wl,--export-dynamic'],
   install: true,
 )
 

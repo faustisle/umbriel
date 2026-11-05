@@ -33,6 +33,7 @@
 
 extern "C" {
 #include <umbrielfx/render/effect.h>
+#include <wlr/render/swapchain.h>
 #include <wlr/util/transform.h>
 }
 
@@ -524,6 +525,25 @@ namespace umbriel {
   }
 
   bool Output::tearingRequested() const { return globalTearingForced() || tearingEligible(tearingCandidate()); }
+
+  std::optional<uint64_t> Output::scanoutModifier() const {
+    if (m_output == nullptr || m_output->swapchain == nullptr) {
+      return std::nullopt;
+    }
+    // The swapchain's format list is the candidate set wlroots asked for; the
+    // allocator may have chosen a different entry (async-capable) for the
+    // actual buffers. Report the modifier of an allocated buffer instead.
+    for (const wlr_swapchain_slot& slot : m_output->swapchain->slots) {
+      if (slot.buffer == nullptr) {
+        continue;
+      }
+      wlr_dmabuf_attributes attributes{};
+      if (wlr_buffer_get_dmabuf(slot.buffer, &attributes)) {
+        return attributes.modifier;
+      }
+    }
+    return std::nullopt;
+  }
 
   std::optional<bool> Output::lastPresentationVsync() const {
     if (!m_lastPresentationFlags || *m_lastPresentationFlags == 0) {
@@ -1317,7 +1337,10 @@ namespace umbriel {
   }
 
   void Output::applyCursorConfig() {
-    const bool lockSoftwareCursor = !config().input.cursor.hardwareCursor;
+    // Global tearing presents the cursor in the same buffer as the rest of the
+    // desktop. A hardware cursor plane cannot be part of an Intel async flip,
+    // and moving it would force every frame back to a vsynced commit.
+    const bool lockSoftwareCursor = !config().input.cursor.hardwareCursor || globalTearingForced();
     if (lockSoftwareCursor == m_softwareCursorLocked) {
       return;
     }
@@ -1327,6 +1350,22 @@ namespace umbriel {
     // happens to be; neither is a transition a recorder should see, so discard
     // the snapshot and let the next sample re-seed it.
     m_lastCursorPlane = {};
+    wlr_output_schedule_frame(m_output);
+  }
+
+  void Output::recreateSwapchain() {
+    if (m_output == nullptr) {
+      return;
+    }
+    // Drop the old swapchain: its buffers were allocated with the previous
+    // tearing policy's modifiers.
+    wlr_output_init_render(m_output, m_server->allocator(), m_server->renderer());
+    if (m_output->enabled
+        && m_output->width > 0
+        && m_output->height > 0
+        && !wlr_output_configure_primary_swapchain(m_output, nullptr, &m_output->swapchain)) {
+      kLog.warn("output '{}': failed to recreate primary swapchain", m_output->name);
+    }
     wlr_output_schedule_frame(m_output);
   }
 

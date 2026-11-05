@@ -151,7 +151,7 @@ force_tearing = true
 
 This is an override of Umbriel's normal eligibility policy, so a window or output that sets `tearing = false` does not prevent it. Session lock, output capture, and recovery from a failed asynchronous commit still use synchronized presentation. The setting applies on reload to every connected output independently.
 
-Asynchronous presentation and hardware cursor updates are separate planes. With the default `hardware_cursor = true`, the pointer is updated by the cursor plane and may not tear with the desktop. Set `[input.cursor] hardware_cursor = false` to composite the cursor into the output frame so it follows the same asynchronous presentation path.
+Asynchronous presentation and hardware cursor updates are separate planes. Global force tearing therefore automatically uses a software cursor, composited into the output frame, so the pointer follows the same asynchronous presentation path. This overrides `[input.cursor] hardware_cursor = true` while `force_tearing` is active and restores the configured hardware cursor when it is disabled.
 
 Run `umbriel tearing` to inspect per-output eligibility and fallback reasons. A `global force` marker shows when the override is active.
 

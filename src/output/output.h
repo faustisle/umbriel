@@ -133,6 +133,10 @@ namespace umbriel {
     bool configuredCyclicWorkspaces() const;
     bool tearingRequested() const;
     bool lastCommitTearing() const { return m_lastCommitTearing; }
+    // Modifier of an allocated primary swapchain buffer, or nullopt before one
+    // exists. Diagnostics only; the kernel may still reject a particular
+    // modifier for async flips.
+    std::optional<uint64_t> scanoutModifier() const;
     const std::optional<uint32_t>& lastPresentationFlags() const { return m_lastPresentationFlags; }
     const std::optional<bool>& lastPresentationPresented() const { return m_lastPresentationPresented; }
     std::optional<bool> lastPresentationVsync() const;
@@ -162,6 +166,10 @@ namespace umbriel {
     void resetTearingState();
     void applyDirectScanoutConfig();
     void applyCursorConfig();
+    // Recreate the primary swapchain so scanout buffers honor the current
+    // tearing modifier policy (force tearing steers them to async-capable
+    // modifiers).
+    void recreateSwapchain();
     // Compare the live hardware cursor against the snapshot and, when it
     // changed and a cursor-metadata consumer wants it, damage the box it left
     // and the box it entered, so the transition reaches a delivered frame.

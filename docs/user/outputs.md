@@ -222,7 +222,7 @@ tearing = true
 
 Umbriel uses asynchronous presentation only for an eligible fullscreen window that requests it or matches a `tearing = true` window rule. A window rule can also veto a client request.
 
-To request asynchronous presentation for the whole desktop instead, bypassing the per-output and per-window policy, set [`[general] force_tearing = true`](configuration.md#global-tearing). Session lock and output capture still fall back to synchronized presentation. With the default hardware cursor, pointer updates use a separate plane; set `[input.cursor] hardware_cursor = false` to include the cursor in the asynchronously presented frame. Run `umbriel tearing` to inspect eligibility and fallback reasons.
+To request asynchronous presentation for the whole desktop instead, bypassing the per-output and per-window policy, set [`[general] force_tearing = true`](configuration.md#global-tearing). Session lock and output capture still fall back to synchronized presentation. While it is active Umbriel uses a software cursor so the pointer is presented in the same torn frame; the configured hardware cursor returns when the setting is disabled. Run `umbriel tearing` to inspect eligibility and fallback reasons.
 
 ### HDR
 

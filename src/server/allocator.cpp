@@ -1,6 +1,8 @@
 #include "server/allocator.h"
 
+#include "config/config.h"
 #include "server/allocator_policy.h"
+#include "server/drm_async.h"
 #include "wlr.h"
 
 #include <cinttypes>
@@ -11,6 +13,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <vector>
 
 extern "C" {
 #include <umbrielfx/render/pixel_format.h>
@@ -178,16 +181,77 @@ namespace umbriel {
       return &allocator->base;
     }
 
+    // Wraps wlroots' DRM allocator so global force tearing can steer scanout
+    // buffers to modifiers the kernel accepts for async page flips. Intel gen9
+    // advertises CCS for scanout but rejects CCS for async flips, which would
+    // otherwise make every request fall back to a vsynced commit.
+    struct AsyncScanoutAllocator {
+      wlr_allocator base;
+      wlr_allocator* inner;
+      int drmFd;
+    };
+
+    AsyncScanoutAllocator* fromAsyncAllocator(wlr_allocator* wlr_allocator) {
+      return reinterpret_cast<AsyncScanoutAllocator*>(
+          reinterpret_cast<char*>(wlr_allocator) - offsetof(AsyncScanoutAllocator, base)
+      );
+    }
+
+    wlr_buffer*
+    asyncAllocatorCreateBuffer(wlr_allocator* wlr_allocator, int width, int height, const wlr_drm_format* format) {
+      AsyncScanoutAllocator* allocator = fromAsyncAllocator(wlr_allocator);
+      if (format != nullptr && config().general.forceTearing) {
+        const std::vector<uint64_t> asyncModifiers = drmAsyncScanoutModifiers(allocator->drmFd, format->format);
+        std::vector<uint64_t> preferred = filterPreferredModifiers(format->modifiers, format->len, asyncModifiers);
+        if (!preferred.empty()) {
+          wlr_drm_format preferredFormat = *format;
+          preferredFormat.len = preferred.size();
+          preferredFormat.capacity = preferred.size();
+          preferredFormat.modifiers = preferred.data();
+          if (wlr_buffer* buffer = wlr_allocator_create_buffer(allocator->inner, width, height, &preferredFormat)) {
+            return buffer;
+          }
+        }
+      }
+      return wlr_allocator_create_buffer(allocator->inner, width, height, format);
+    }
+
+    void asyncAllocatorDestroy(wlr_allocator* wlr_allocator) {
+      AsyncScanoutAllocator* allocator = fromAsyncAllocator(wlr_allocator);
+      wlr_allocator_destroy(allocator->inner);
+      free(allocator);
+    }
+
+    const wlr_allocator_interface asyncAllocatorImpl = {
+        .create_buffer = asyncAllocatorCreateBuffer,
+        .destroy = asyncAllocatorDestroy,
+    };
+
+    wlr_allocator* wrapAsyncScanoutAllocator(wlr_allocator* inner, int drmFd) {
+      if (inner == nullptr || drmFd < 0) {
+        return inner;
+      }
+      auto* allocator = static_cast<AsyncScanoutAllocator*>(calloc(1, sizeof(AsyncScanoutAllocator)));
+      if (allocator == nullptr) {
+        return inner;
+      }
+      wlr_allocator_init(&allocator->base, &asyncAllocatorImpl, inner->buffer_caps);
+      allocator->inner = inner;
+      allocator->drmFd = drmFd;
+      return &allocator->base;
+    }
+
   } // namespace
 
   wlr_allocator* createAllocator(wlr_backend* backend, wlr_renderer* renderer) {
+    wlr_allocator* allocator = nullptr;
     if (wantsAlignedSoftwareAllocator(wlr_backend_get_drm_fd(backend), wlr_renderer_get_drm_fd(renderer))) {
-      if (wlr_allocator* alloc = createAlignedUdmabufAllocator()) {
-        return alloc;
-      }
+      allocator = createAlignedUdmabufAllocator();
     }
-
-    return wlr_allocator_autocreate(backend, renderer);
+    if (allocator == nullptr) {
+      allocator = wlr_allocator_autocreate(backend, renderer);
+    }
+    return wrapAsyncScanoutAllocator(allocator, wlr_backend_get_drm_fd(backend));
   }
 
 } // namespace umbriel

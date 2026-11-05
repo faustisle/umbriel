@@ -605,6 +605,9 @@ namespace umbriel {
         if (const std::string fallback = output.value("fallback_reason", ""); !fallback.empty()) {
           std::println("  fallback: {}", fallback);
         }
+        if (output.contains("scanout_modifier") && output.at("scanout_modifier").is_number_unsigned()) {
+          std::println("  scanout modifier: 0x{:x}", output.at("scanout_modifier").get<uint64_t>());
+        }
       }
       for (const auto& surface : ok.at("surfaces")) {
         std::string rule = "inherit";
@@ -1101,6 +1104,10 @@ namespace umbriel {
       entry["last_presentation_flags"] = nullptr;
       entry["last_presentation_presented"] = nullptr;
       entry["last_presentation_vsync"] = nullptr;
+      entry["scanout_modifier"] = nullptr;
+      if (const std::optional<uint64_t> modifier = output->scanoutModifier()) {
+        entry["scanout_modifier"] = *modifier;
+      }
       if (output->lastPresentationPresented()) {
         entry["last_presentation_presented"] = *output->lastPresentationPresented();
       }

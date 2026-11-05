@@ -75,6 +75,7 @@ unit_tests = [
     ],
   ],
   ['allocator-policy', ['unit/allocator_policy.cpp'], []],
+  ['drm-async', ['unit/drm_async.cpp'], [umbriel_core_dep]],
   ['drm-policy', ['unit/drm_policy.cpp'], []],
   ['config-watcher', ['unit/config_watcher.cpp'], [umbriel_core_dep]],
   ['action-registry', ['unit/action_registry.cpp'], [umbriel_core_dep]],

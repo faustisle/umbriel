@@ -862,6 +862,8 @@ namespace umbriel {
     if (effects.tearingPolicy) {
       for (const auto& output : m_outputs) {
         output->resetTearingState();
+        output->applyCursorConfig();
+        output->recreateSwapchain();
       }
     }
     if (effects.directScanoutPolicy) {
